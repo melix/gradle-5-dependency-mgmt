@@ -1,0 +1,297 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" /><meta name="author" content="Cédric Champeau (@CedricChampeau), Gradle" /><title>: Gradle 5 - Dependency Management</title><meta content="yes" name="apple-mobile-web-app-capable" /><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style" /><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui" name="viewport" /><link href="reveal.js/css/reveal.css" rel="stylesheet" /><link rel="stylesheet" href="reveal.js/css/theme/summit.css" id="theme" /><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/css/font-awesome.min.css" /><link href="reveal.js/lib/css/zenburn.css" rel="stylesheet" /><script>document.write( '<link rel="stylesheet" href="reveal.js/css/print/' + ( window.location.search.match( /print-pdf/gi ) ? 'pdf' : 'paper' ) + '.css" type="text/css" media="print">' );</script><link rel="stylesheet" type="text/css" href="reveal.js/css/theme/asciinema-player.css" />
+<link rel="stylesheet" type="text/css" href="reveal.js/css/theme/github-gist.css" />
+<script src="reveal.js/css/theme/asciinema-player.js"></script>
+
+</head><body><div class="reveal"><div class="slides"><section class="title" data-state="title" data-transition="zoom" data-transition-speed="fast" data-background-image="./images/title.jpeg"><h1></h1><h2>Gradle 5 - Dependency Management</h2><p class="author"><small>Cédric Champeau (@CedricChampeau), Gradle</small></p></section><section id="who-am-i"><h2>Who am I</h2><style>
+.asciinema-terminal.font-medium {
+  font-size: 16px;
+}
+</style>
+<div class="listingblock"><div class="content"><pre class="highlight"><code class="groovy language-groovy">speaker {
+    name 'Cédric Champeau'
+    company 'Gradle Inc'
+    oss 'Apache Groovy committer',
+    successes 'Static type checker',
+              'Static compilation',
+              'Traits',
+              'Markup template engine',
+              'DSLs'
+        failures Stream.of(bugs),
+        twitter '@CedricChampeau',
+        github 'melix',
+        extraDescription '''Groovy in Action 2 co-author
+Misc OSS contribs (Gradle plugins, deck2pdf, jlangdetect, ...)'''
+}</code></pre></div></div></section>
+<section><section id="gradle-in-a-nutshell" data-background-color="#01303a"><h2>Gradle in a nutshell</h2></section><section id="agnostic-build-system"><h2>Agnostic Build System</h2><div class="ulist"><ul><li><p>Java ecosystem</p><div class="ulist"><ul><li><p>Groovy, Kotlin, Scala, &#8230;&#8203;</p></li></ul></div></li><li><p>Native ecosystem</p><div class="ulist"><ul><li><p>C, C++, Swift, &#8230;&#8203;</p></li></ul></div></li><li><p>Android</p></li><li><p>Misc</p><div class="ulist"><ul><li><p>Go, Asciidoctor, &#8230;&#8203;</p></li></ul></div></li></ul></div></section><section id="gradle-in-figures"><h2>Gradle in figures</h2><div class="ulist"><ul><li class="fragment"><p>4.0M downloads / month</p></li><li class="fragment"><p><a href="https://techcrunch.com/2017/04/07/tracking-the-explosive-growth-of-open-source-software/">#17 OSS projects worldwide</a></p></li><li class="fragment"><p>35 Gradle Engineers</p></li><li class="fragment"><p>300K builds/week @LinkedIn</p></li></ul></div></section><section id="gradle"><h2>Gradle</h2><div class="imageblock" style=""><img src="./images/gradle-task-dag.png" alt="gradle task dag" width="1280" height="350px" /></div></section><section id="a-java-library"><h2>A Java library</h2><div class="listingblock"><div class="content"><pre class="highlight"><code class="groovy language-groovy">plugins {
+   id 'java-library'
+}
+
+dependencies {
+   api 'com.acme:foo:1.0'
+   implementation 'com.zoo:monkey:1.1'
+}</code></pre></div></div></section><section id="a-native-app"><h2>A native app</h2><div class="listingblock"><div class="content"><pre class="highlight"><code class="groovy language-groovy">plugins {
+   id 'cpp-application'
+}
+
+repositories {
+    maven {
+        url 'http://localhost:8000/'
+    }
+}
+
+dependencies {
+    implementation 'org.gradle.cpp-samples:math:1.5'
+}</code></pre></div></div></section></section>
+<section><section id="why-dependency-management" data-background-color="#01303a"><h2>Why dependency management?</h2></section><section id="source-vs-published"><h2>Source vs published</h2><div class="ulist"><ul><li><p>Sources</p><div class="ulist"><ul><li><p>(mostly) reliable</p></li><li><p>(often) slow</p></li><li><p>never touched</p></li><li><p>hard to version</p></li><li><p>safe</p></li></ul></div></li></ul></div></section><section id="source-vs-published-2"><h2>Source vs published (2)</h2><div class="ulist"><ul><li><p>Binaries</p><div class="ulist"><ul><li><p>Stable</p></li><li><p>Fast (pre-built)</p></li><li><p>Requires trusted sources</p></li><li><p>Not always metadata</p></li></ul></div></li></ul></div></section><section id="consuming-binaries"><h2>Consuming binaries</h2><div class="ulist"><ul><li><p>A <code>lib</code> directory</p></li><li><p>From a Maven repository</p><div class="ulist"><ul><li><p>Maven Central (OSS libraries)</p></li><li><p>Private repositories (closed source, proxies)</p></li></ul></div></li><li><p>From an Ivy repository</p><div class="ulist"><ul><li><p>Artifactory, &#8230;&#8203;</p></li></ul></div></li><li><p>From a custom repository</p><div class="ulist"><ul><li><p>JitPack, &#8230;&#8203;</p></li></ul></div></li></ul></div></section><section id="lib-directory"><h2>Lib directory</h2><div class="ulist"><ul><li><p>Straightforward</p></li><li><p>No dependency management at all</p></li><li><p>Binaries in SCM</p></li></ul></div></section><section id="maven-ivy-repository"><h2>Maven/Ivy repository</h2><div class="ulist"><ul><li><p>GAV coordinates</p></li><li><p>transitive dependencies management</p></li><li><p>metadata format restricts what you can do</p></li></ul></div></section><section id="custom-repositories"><h2>Custom repositories</h2><div class="ulist"><ul><li><p>Not portable</p></li><li><p>Hard to consume transitively</p></li></ul></div></section><section id="maven-maven-central"><h2>Maven != Maven Central</h2><div class="ulist"><ul><li><p>Maven: a build tool</p></li><li><p>Maven <strong>repository</strong>: a place where you can find binaries</p></li></ul></div></section><section id="what-if-there-s-no-repository"><h2>What if there&#8217;s no repository?</h2><div class="ulist"><ul><li><p>Coming soon: <strong>source dependencies</strong></p></li></ul></div>
+<div class="listingblock"><div class="content"><pre class="highlight"><code class="groovy language-groovy">sourceControl {
+   vcsMappings {
+      withModule("org.test:greeter") {
+         from(GitVersionControlSpec) {
+            url = "git@github.com:orgtest/greeter.git"
+         }
+      }
+   }
+}</code></pre></div></div></section></section>
+<section><section id="managing-dependencies" data-background-color="#01303a"><h2>Managing dependencies</h2></section><section id="typical-maven-dependency"><h2>Typical Maven dependency</h2><div class="listingblock"><div class="content"><pre class="highlight"><code class="xml language-xml">&lt;dependencies&gt;
+   &lt;groupId&gt;org.apache.commons&lt;/groupId&gt;
+   &lt;artifactId&gt;commons-lang3&lt;/artifactId&gt;
+   &lt;version&gt;3.7&lt;/version&gt;
+   &lt;scope&gt;compile&lt;/scope&gt;
+&lt;/dependencies&gt;</code></pre></div></div></section><section id="using-gradle"><h2>Using Gradle</h2><div class="listingblock"><div class="content"><pre class="highlight"><code class="groovy language-groovy">dependencies {
+   // An API dependency is used in public APIS
+   api 'org.apache.commons:commons-lang3:3.7'
+
+   // or...
+   // An implementation dependency is used in internals
+   implementation 'org.apache.commons:commons-lang3:3.7'
+}</code></pre></div></div></section><section id="api-vs-implementation"><h2>API vs implementation</h2><div class="ulist"><ul><li><p>To <em>build</em> a library, you need:</p><div class="ulist"><ul><li><p>API+implementation dependencies</p></li></ul></div></li><li><p>To <em>compile</em> against a library, you need:</p><div class="ulist"><ul><li><p>API dependencies</p></li></ul></div></li><li><p>To <em>run</em>, you need:</p><div class="ulist"><ul><li><p>API+implementation+runtime only dependencies</p></li></ul></div></li></ul></div></section><section id="corollary"><h2>Corollary</h2><div class="paragraph"><p>All libraries published using Maven do it wrong</p></div></section><section id="published-metadata"><h2>Published metadata</h2><div class="ulist"><ul><li><p>Should be aimed at <em>consumers</em></p></li><li><p>It doesn&#8217;t matter what you need to compile</p></li><li><p>It matters what the <em>consumers</em> need</p></li><li><p>Published POM should be != producer POM</p></li></ul></div></section><section id="what-gradle-does"><h2>What Gradle does</h2><div class="ulist"><ul><li><p>Since 3.4, use the <code>java-library</code> plugin</p></li><li><p>Maps to <code>compile</code> and <code>runtime</code> scopes in <code>pom.xml</code></p></li><li><p>But it&#8217;s not enough&#8230;&#8203;</p></li></ul></div></section><section id="gradle-module-metadata"><h2>Gradle module metadata</h2><div class="ulist"><ul><li><p>Aimed at modeling properly <em>variants</em> of modules</p></li><li><p>Death to classifiers (mostly)</p></li><li><p>Model different set of dependencies</p></li><li><p>Multi-ecosystem (Java, Native, &#8230;&#8203;)</p></li></ul></div></section><section id="gradle-metadata-format"><h2>Gradle metadata format</h2><div class="paragraph"><p>See <a href="sample-module.json">sample</a></p></div></section><section id="consequence"><h2>Consequence</h2><div class="ulist"><ul><li><p><code>all</code>/<code>fat</code> jars published with correct dependencies</p></li><li><p><code>guava-jdk5</code>, <code>guava-jdk7</code>, &#8230;&#8203; no longer need to be classifiers</p></li><li><p>attributes for matching variants</p></li></ul></div></section><section id="native-dependency-management"><h2>Native dependency management</h2><div class="imageblock" style=""><img src="./images/04-google-test.gif" alt="04 google test" width="1280" height="500px" /></div></section><section id="variant-aware"><h2>Variant-aware</h2><div class="listingblock"><div class="content"><pre class="highlight"><code class="text language-text">&gt; Task :subvola:gorgoneum:teerer:polytonal:dependencyInsight
+project :outissue:carnally
+   variant "debugRuntimeElements" [
+      com.android.build.api.attributes.BuildTypeAttr      = debug
+      com.android.build.gradle.dependency.VariantAttr     = debug (not requested)
+      org.gradle.usage                                    = java-runtime
+      com.android.build.gradle.dependency.AndroidTypeAttr = Aar
+   ]</code></pre></div></div></section><section id="variant-awareness"><h2>Variant-awareness</h2><div class="ulist"><ul><li><p>Can be used to model complex requirements:</p><div class="ulist"><ul><li><p>"Give me a version which passed QA"</p></li><li><p>"Give me a version optimized for arm64"</p></li><li><p>"Give me stubs for this library"</p></li></ul></div></li></ul></div></section></section>
+<section><section id="rich-version-constraints" data-background-color="#01303a"><h2>Rich version constraints</h2></section><section id="meaning-of-versions"><h2>Meaning of versions</h2><div class="ulist"><ul><li><p>What does it mean to say: "I depend on 1.1"</p></li><li><p>Does it mean it doesn&#8217;t work using 1.0?</p></li><li><p>Implicit statement: "I should work with 1.1+"</p></li><li><p>What if it&#8217;s not true?</p></li></ul></div></section><section id="meaning-of-versions-2"><h2>Meaning of versions</h2><div class="ulist"><ul><li><p>Use <code>latest.release</code>?</p></li><li><p>Dependency on <code>1.2-beta-3</code>: is <code>beta</code> important?</p></li><li><p>Dependency on snapshots&#8230;&#8203;</p></li></ul></div></section><section id="custom-dependency-reasons"><h2>Custom dependency reasons</h2><div class="ulist"><ul><li><p>Explain <em>why</em> a dependency is here</p></li></ul></div>
+<div class="listingblock"><div class="content"><pre class="highlight"><code class="groovy language-groovy">dependencies {
+   implementation('com.google.guava:guava') {
+      version { prefer '23' }
+      because 'required for immutable collections'
+   }
+}</code></pre></div></div></section><section id="custom-dependency-reasons-2"><h2>Custom dependency reasons</h2><div class="ulist"><ul><li><p>Shown in dependency insight (soon in build scans)</p></li></ul></div>
+<div class="paragraph"><p><code>gradle dependencyInsight --configuration compileClasspath --dependency guava</code></p></div>
+<div class="listingblock"><div class="content"><pre class="highlight"><code class="text language-text">org:foo:com.google.guava:guava:23 (required for immutable collections)
+   variant "default" [
+      Requested attributes not found in the selected variant:
+         org.gradle.usage = java-api
+   ]</code></pre></div></div></section><section id="strict-versions"><h2>Strict versions</h2><div class="ulist"><ul><li><p>Dependency should be <strong>exactly</strong> this version, or <em>fail</em></p></li></ul></div>
+<div class="listingblock"><div class="content"><pre class="highlight"><code class="groovy language-groovy">dependencies {
+   api('com.acme:foo') {
+      version {
+         strictly '1.1'
+      }
+      because "Only version approved by QA"
+   }
+}</code></pre></div></div></section><section id="rejected-versions"><h2>Rejected versions</h2><div class="ulist"><ul><li><p>Dependency should be <strong>exactly</strong> this version, or <em>fail</em></p></li></ul></div>
+<div class="listingblock"><div class="content"><pre class="highlight"><code class="groovy language-groovy">dependencies {
+   api('com.acme:foo') {
+      version {
+         prefer '[1.0, 2.0)'
+         reject '1.1'
+      }
+      because "Version 1.1 has a vulnerability"
+   }
+}</code></pre></div></div></section></section>
+<section><section id="dependency-constraints" data-background-color="#01303a"><h2>Dependency constraints</h2></section><section id="concept"><h2>Concept</h2><div class="ulist"><ul><li><p>Influence versions found in the graph, without adding hard dependencies</p></li><li><p>"If you use this module, use this version"</p></li></ul></div></section><section id="dependencymanagement"><h2>&lt;dependencyManagement&gt;</h2><div class="paragraph"><p>Similar to Maven&#8217;s <code>&lt;dependencyManagement&gt;</code> block but:</p></div>
+<div class="ulist"><ul><li><p>enforced transitively</p></li><li><p>published</p></li><li><p>consistent behavior</p></li></ul></div></section><section id="example-1-dependency-version-suggestion"><h2>Example 1: dependency version suggestion</h2><div class="listingblock"><div class="content"><pre class="highlight"><code class="groovy language-groovy">dependencies {
+    constraints {
+       api 'com.acme:foo:1.0'
+    }
+
+    // no need to put a version number
+    api 'com.acme:foo'
+}</code></pre></div></div></section><section id="example-2-influence-transitive-dependency-version"><h2>Example 2: influence transitive dependency version</h2><div class="listingblock"><div class="content"><pre class="highlight"><code class="groovy language-groovy">dependencies {
+    constraints {
+       // if 'bar' found transitively, use 1.1
+       api 'com.acme:bar:1.1'
+    }
+    // ...
+}</code></pre></div></div></section><section id="platform-vs-library"><h2>Platform vs library</h2><div class="ulist"><ul><li><p>Platforms define things that "work together"</p></li><li><p>Suggests versions, not hard dependencies</p></li><li><p>Consumers <em>depend on</em> a platform for suggestions</p></li></ul></div>
+<div class="paragraph"><p>Example: Spring Boot BOM</p></div></section><section id="constraints-as-platforms"><h2>Constraints as platforms</h2><div class="listingblock"><div class="content"><pre class="highlight"><code class="groovy language-groovy">apply plugin: 'platform'
+
+dependencies {
+   constraints {
+       platform 'org.springframework.boot:spring-boot:1.5.8-RELEASE'
+       platform 'org.springframework.boot:spring-boot-test-autoconfigure:1.5.8-RELEASE'
+       // ...
+   }
+}</code></pre></div></div></section><section id="constraints-publication"><h2>Constraints publication</h2><div class="ulist"><ul><li><p>Published as constraints in Gradle metadata</p></li></ul></div>
+<div class="listingblock"><div class="content"><pre class="highlight"><code class="json language-json">{
+   "variants": [
+      {
+         "name": "api",
+         "dependencyConstraints": [
+            { "group": "org.springframework.boot", "module": "spring-boot", "version": { "prefers": "1.5.8-RELEASE" } },
+            { "group": "org.springframework.boot", "module": "spring-boot-test-autoconfigure", "version": { "prefers": "1.5.8-RELEASE" } }
+         ],
+         "attributes": { "usage": "compile" }
+},
+...</code></pre></div></div>
+<div class="ulist"><ul><li><p>Published as <code>&lt;dependencyManagement&gt;</code> in <code>pom.xml</code> (best effort)</p></li></ul></div></section></section>
+<section><section id="capabilities" data-background-color="#01303a"><h2>Capabilities</h2></section><section id="not-all-conflicts-are-version-conflicts"><h2>Not all conflicts are version conflicts</h2><div class="ulist"><ul><li><p><code>awesome-lib</code> depends on <code>commons-logging</code></p></li><li><p><code>react-lib</code> depends on <code>jcl-over-slf4j</code></p></li></ul></div>
+<div class="paragraph"><p>Problem: you shouldn&#8217;t have both on classpath</p></div></section><section id="not-all-conflicts-are-version-conflicts-2"><h2>Not all conflicts are version conflicts</h2><div class="ulist"><ul><li><p><code>google-collections</code> was superceded by <code>guava</code></p></li><li><p><code>groovy-all</code> provides the same capability as <code>groovy</code></p></li></ul></div></section><section id="future-proof"><h2>Future-proof</h2><div class="ulist"><ul><li><p>If anybody introduces a conflict, we <em>will</em> discover it:</p></li></ul></div>
+<div class="listingblock"><div class="content"><pre class="highlight"><code class="text language-text">Cannot choose between
+    cglib:cglib-nodep:3.2.5 and cglib:cglib:3.2.5
+    because they provide the same capability: cglib:cglib:3.2.5</code></pre></div></div></section><section id="how-to-declare-capabilities"><h2>How to declare capabilities?</h2><div class="ulist"><ul><li><p>Capabilities are <em>versioned</em></p></li><li><p>Each component provides an <em>implicit capability</em> corresponding to its GAV</p></li><li><p>Additional capabilities declares on outgoing variants</p></li></ul></div>
+<div class="listingblock"><div class="content"><pre class="highlight"><code class="groovy language-groovy">configurations.api
+   .outgoing
+   .capability('org.slf4f:slf4j-binding:1.0')</code></pre></div></div></section><section id="capabilities-are-published"><h2>Capabilities are published</h2><div class="ulist"><ul><li><p>Gradle metadata only!</p></li></ul></div>
+<div class="listingblock"><div class="content"><pre class="highlight"><code class="json language-json">{
+    ...
+    "variants": [
+        {
+            "name": "api",
+            "capabilities": [
+                { "group": "org.slf4f", "name": "slf4j-binding", "version": "1.0" }
+            ],
+            "attributes": { "usage": "compile" }
+        },
+        // ...
+    ]
+}</code></pre></div></div></section></section>
+<section><section id="dependency-locking" data-background-color="#01303a"><h2>Dependency locking</h2></section><section id="idea-make-dynamic-dependencies-acceptable"><h2>Idea: make dynamic dependencies acceptable</h2><div class="ulist"><ul><li><p>Ranges are bad for reproducibility: <code>[1.0, )</code></p></li><li><p>May break build without notice</p></li><li><p>Doesn&#8217;t enforce a tested version</p></li></ul></div></section><section id="dependency-locking-2"><h2>Dependency locking</h2><div class="ulist"><ul><li><p>Remember <em>resolved</em> version numbers</p></li><li><p><em>Lock</em> them in a lock file</p></li><li><p>Use the lock file when resolving</p></li><li><p>Lock file is pushed to VCS</p></li><li><p>Fail if a dependency was upgraded</p></li></ul></div></section></section>
+<section><section id="alignment" data-background-color="#01303a"><h2>Alignment</h2></section><section id="module-sets"><h2>Module sets</h2><div class="ulist"><ul><li><p>Some modules are meant to be used together</p><div class="ulist"><ul><li><p>e.g: <code>groovy-2.4.15</code> with <code>groovy-json-2.4.15</code></p></li></ul></div></li><li><p>if one is upgraded, the other has to be upgraded too</p></li></ul></div></section><section id="technique"><h2>Technique</h2><div class="ulist"><ul><li><p>Add constraints on all other modules</p></li></ul></div>
+<div class="paragraph"><p>e.g: <code>groovy</code> has a constraint on <code>groovy-json</code>:</p></div>
+<div class="listingblock"><div class="content"><pre class="highlight"><code class="groovy language-groovy">dependencies {
+   constraints {
+       api 'org.codehaus.groovy:groovy-json:2.4.15'
+       api 'org.codehaus.groovy:groovy-xml:2.4.15'
+       // ...
+   }
+}</code></pre></div></div></section></section>
+<section><section id="metadata-is-live" data-background-color="#01303a"><h2>Metadata is live</h2></section><section id="lifecycle-doesn-t-end-at-publishing"><h2>Lifecycle doesn&#8217;t end at publishing</h2><div class="ulist"><ul><li><p>Modules are published at date <code>d</code></p></li><li><p>Bugs are discovered at <code>d+1</code></p></li><li><p>Reaches maturity at <code>d+70</code></p></li><li><p>Vulnerabilities are discovered at <code>d+147</code></p></li><li><p>Should we allow using vulnerable dependencies?</p></li></ul></div></section></section>
+<section><section id="blacklisting" data-background-color="#01303a"><h2>Blacklisting</h2></section><section id="fail-if-we-resolve-to-a-blacklisted-version"><h2>Fail if we resolve to a blacklisted version</h2><div class="listingblock"><div class="content"><pre class="highlight"><code class="groovy language-groovy">dependencies {
+   constraints {
+       implementation('org.foo:awesome-lib') {
+           version {
+               prefer '1.2'
+               reject '1.1'
+           }
+           because 'Version 1.1 is buggy'
+       }
+   }
+}</code></pre></div></div></section><section id="error-messages"><h2>Error messages</h2><div class="ulist"><ul><li><p>Error message will give more context</p></li></ul></div>
+<div class="listingblock"><div class="content"><pre class="highlight"><code>Execution failed for task ':buildInit:dependencies'.
+&gt; Could not resolve all dependencies for configuration ':buildInit:runtimeClasspath'.
+  &gt; Module 'com.google.collections:google-collections' has been rejected:
+       Dependency path 'org.gradle:buildInit:4.6'
+          --&gt; 'org.codehaus.plexus:plexus-container-default:1.5.5'
+          --&gt; 'com.google.collections:google-collections' prefers '1.0'
+       Constraint path 'org.gradle:buildInit:4.6'
+          --&gt; 'org.gradle:core:4.6'
+          --&gt; 'org.gradle:baseServices:4.6'
+          --&gt; 'com.google.collections:google-collections' rejects all versions because of the following reason: Guava replaces google collections</code></pre></div></div></section><section id="deprecated-modules"><h2>Deprecated modules</h2><div class="ulist"><ul><li><p>Use case: "Library X is deprecated, please use Y instead"</p></li><li><p>Similar to blacklisting</p></li><li><p>Warn instead of fail</p></li></ul></div></section></section>
+<section><section id="component-metadata-rules" data-background-color="#01303a"><h2>Component metadata rules</h2></section><section id="fixing-bad-metadata"><h2>Fixing bad metadata</h2><div class="ulist"><ul><li><p>Libraries are often published with <em>bad</em> metadata</p><div class="ulist"><ul><li><p>strong dependencies instead of optional</p></li><li><p>wrong scope</p></li><li><p>incorrect version</p></li><li><p>excludes that shouldn&#8217;t be there</p></li><li><p>&#8230;&#8203;</p></li></ul></div></li></ul></div></section><section id="component-metadata-rules-2"><h2>Component metadata rules</h2><div class="ulist"><ul><li><p>Modifies metadata of a component (consumer only)</p></li><li><p>Allows adding/removing dependencies/constraints/capabilities</p></li></ul></div></section><section id="component-metadata-rules-example-1"><h2>Component metadata rules: example 1</h2><div class="ulist"><ul><li><p>Downgrading a dependency</p></li></ul></div>
+<div class="listingblock"><div class="content"><pre class="highlight"><code class="kotlin language-kotlin">withModule(module) {
+   allVariants {
+      withDependencyConstraints {
+         filter { it.group == "org.apache.ivy" }.forEach {
+            version { prefer("2.2.0") }
+            because("Gradle depends on ivy implementation details which changed with newer versions")
+         }
+      }
+   }
+}</code></pre></div></div></section><section id="component-metadata-rules-example-2"><h2>Component metadata rules: example 2</h2><div class="ulist"><ul><li><p>Remove a dependency</p></li></ul></div>
+<div class="listingblock"><div class="content"><pre class="highlight"><code class="kotlin language-kotlin">withModule("org.eclipse.jgit:org.eclipse.jgit") {
+   allVariants {
+      withDependencies {
+         removeAll { it.group == "com.googlecode.javaewah" }
+      }
+   }
+}</code></pre></div></div></section><section id="component-metadata-rules-example-3"><h2>Component metadata rules: example 3</h2><div class="ulist"><ul><li><p>Add a capability</p></li></ul></div>
+<div class="listingblock"><div class="content"><pre class="highlight"><code class="kotlin language-kotlin">withModule('org.ow2.asm:asm') { module -&gt;
+   allVariants {
+      withCapabilities {
+         addCapability("asm", "asm", module.id.version)
+      }
+   }
+}</code></pre></div></div></section></section>
+<section><section id="conclusion" data-background-color="#01303a"><h2>Conclusion</h2></section><section id="conclusion-2"><h2>Conclusion</h2><div class="ulist"><ul><li><p>Slides: <a href="https://melix.github.io/gradle-5-dependency-mgmt" class="bare">https://melix.github.io/gradle-5-dependency-mgmt</a></p></li><li><p>Discuss: @CedricChampeau</p></li></ul></div></section></section>
+<section id="thanks" data-background-color="#01303a"><h2>Thanks!</h2></section></div></div><script src="reveal.js/lib/js/head.min.js"></script><script src="reveal.js/js/reveal.js"></script><script>// See https://github.com/hakimel/reveal.js#configuration for a full list of configuration options
+Reveal.initialize({
+  // Display controls in the bottom right corner
+  controls: true,
+  // Display a presentation progress bar
+  progress: true,
+  // Display the page number of the current slide
+  slideNumber: true,
+  // Push each slide change to the browser history
+  history: true,
+  // Enable keyboard shortcuts for navigation
+  keyboard: true,
+  // Enable the slide overview mode
+  overview: true,
+  // Vertical centering of slides
+  center: true,
+  // Enables touch navigation on devices with touch input
+  touch: true,
+  // Loop the presentation
+  loop: false,
+  // Change the presentation direction to be RTL
+  rtl: false,
+  // Turns fragments on and off globally
+  fragments: true,
+  // Flags if the presentation is running in an embedded mode,
+  // i.e. contained within a limited portion of the screen
+  embedded: false,
+  // Number of milliseconds between automatically proceeding to the
+  // next slide, disabled when set to 0, this value can be overwritten
+  // by using a data-autoslide attribute on your slides
+  autoSlide: 0,
+  // Stop auto-sliding after user input
+  autoSlideStoppable: true,
+  // Enable slide navigation via mouse wheel
+  mouseWheel: false,
+  // Hides the address bar on mobile devices
+  hideAddressBar: true,
+  // Opens links in an iframe preview overlay
+  previewLinks: false,
+  // Theme (e.g., beige, black, league, night, serif, simple, sky, solarized, white)
+  // NOTE setting the theme in the config no longer works in reveal.js 3.x
+  //theme: Reveal.getQueryHash().theme || 'summit',
+  // Transition style (e.g., none, fade, slide, convex, concave, zoom)
+  transition: Reveal.getQueryHash().transition || 'linear',
+  // Transition speed (e.g., default, fast, slow)
+  transitionSpeed: 'default',
+  // Transition style for full page slide backgrounds (e.g., none, fade, slide, convex, concave, zoom)
+  backgroundTransition: 'fade',
+  // Number of slides away from the current that are visible
+  viewDistance: 3,
+  // Parallax background image (e.g., "'https://s3.amazonaws.com/hakim-static/reveal-js/reveal-parallax-1.jpg'")
+  parallaxBackgroundImage: '',
+  // Parallax background size in CSS syntax (e.g., "2100px 900px")
+  parallaxBackgroundSize: '',
+
+  // The "normal" size of the presentation, aspect ratio will be preserved
+  // when the presentation is scaled to fit different resolutions. Can be
+  // specified using percentage units.
+  width: 960,
+  height: 700,
+
+  // Factor of the display size that should remain empty around the content
+  margin: 0.1,
+
+  // Bounds for smallest/largest possible scale to apply to content
+  minScale: 0.2,
+  maxScale: 1.5,
+
+  // Optional libraries used to extend on reveal.js
+  dependencies: [
+      { src: 'reveal.js/lib/js/classList.js', condition: function() { return !document.body.classList; } },
+      { src: 'reveal.js/plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+      { src: 'reveal.js/plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+      { src: 'reveal.js/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+      { src: 'reveal.js/plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+      { src: 'reveal.js/plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }
+  ]
+});</script></body></html>
